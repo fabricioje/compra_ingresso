@@ -128,6 +128,8 @@ Segue o padrão de `UsersController`/`EventsController`.
   usuário inexistente → 404; assento indisponível → **409 Conflict** com
   `{"errors": …}`.
 - `release`: assento vendido → 409.
+- `update`: assento `vendido` é recusado com 422 — os dados de um assento já
+  comprado (setor, fileira, número, preço) não mudam por baixo do comprador.
 - `destroy`: se `destroy` falhar (`order_items` com
   `restrict_with_error`) → 422; assento `vendido` também é recusado com 422.
 
