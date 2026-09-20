@@ -37,4 +37,39 @@ class SeatTest < ActiveSupport::TestCase
 
     assert seat.valid?
   end
+
+  test "assento livre está disponível" do
+    assert seats(:livre).disponivel?
+  end
+
+  test "reserva dentro do prazo não está disponível" do
+    assert_not seats(:reservado).disponivel?
+  end
+
+  test "reserva vencida está disponível" do
+    assert seats(:expirado).disponivel?
+  end
+
+  test "assento vendido não está disponível" do
+    assert_not seats(:vendido).disponivel?
+  end
+
+  test "reservado sem prazo não está disponível" do
+    seat = seats(:reservado)
+    seat.update_column(:reserved_until, nil)
+
+    assert_not seat.disponivel?
+  end
+
+  test "scope expiradas traz só a reserva vencida" do
+    assert_equal [ seats(:expirado) ], Seat.expiradas.to_a
+  end
+
+  test "scope disponiveis traz livre e expirado do evento" do
+    disponiveis = events(:one).seats.disponiveis
+
+    assert_includes disponiveis, seats(:livre)
+    assert_includes disponiveis, seats(:expirado)
+    assert_not_includes disponiveis, seats(:reservado)
+  end
 end
