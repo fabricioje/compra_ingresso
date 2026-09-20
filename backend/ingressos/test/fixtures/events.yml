@@ -1,0 +1,11 @@
+one:
+  name: Show A
+  date: 2026-10-01
+  time: "20:00:00"
+  local: Arena
+
+two:
+  name: Show B
+  date: 2026-11-01
+  time: "21:00:00"
+  local: Teatro

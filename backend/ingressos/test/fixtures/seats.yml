@@ -1,21 +1,36 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
-one:
+livre:
   event: one
-  sector: MyString
-  row: MyString
-  number: MyString
-  price: 9.99
-  status: 1
-  reserved_until: 2026-09-20 16:59:48
-  user: one
+  sector: A
+  row: "1"
+  number: "1"
+  price: 100.0
+  status: 0
 
-two:
-  event: two
-  sector: MyString
-  row: MyString
-  number: MyString
-  price: 9.99
+reservado:
+  event: one
+  sector: A
+  row: "1"
+  number: "2"
+  price: 100.0
   status: 1
-  reserved_until: 2026-09-20 16:59:48
+  user: one
+  reserved_until: <%= 10.minutes.from_now.to_fs(:db) %>
+
+expirado:
+  event: one
+  sector: B
+  row: "1"
+  number: "3"
+  price: 150.0
+  status: 1
+  user: two
+  reserved_until: <%= 10.minutes.ago.to_fs(:db) %>
+
+vendido:
+  event: two
+  sector: A
+  row: "1"
+  number: "1"
+  price: 200.0
+  status: 2
   user: two
