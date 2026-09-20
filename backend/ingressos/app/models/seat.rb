@@ -21,4 +21,29 @@ class Seat < ApplicationRecord
 
     reservado? && reserved_until.present? && reserved_until < at
   end
+
+  # with_lock recarrega o registro dentro de um SELECT ... FOR UPDATE, então
+  # duas requisições simultâneas no mesmo assento são serializadas: a segunda
+  # só lê o estado depois que a primeira comitou.
+  def reserve!(user, ttl: RESERVATION_TTL)
+    with_lock do
+      unless disponivel?
+        errors.add(:base, "Assento indisponível")
+        next false
+      end
+
+      update(status: :reservado, user: user, reserved_until: ttl.from_now)
+    end
+  end
+
+  def release!
+    with_lock do
+      if vendido?
+        errors.add(:base, "Assento vendido não pode ser liberado")
+        next false
+      end
+
+      update(status: :livre, user: nil, reserved_until: nil)
+    end
+  end
 end

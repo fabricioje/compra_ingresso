@@ -72,4 +72,70 @@ class SeatTest < ActiveSupport::TestCase
     assert_includes disponiveis, seats(:expirado)
     assert_not_includes disponiveis, seats(:reservado)
   end
+
+  test "reserve! reserva assento livre" do
+    seat = seats(:livre)
+
+    assert seat.reserve!(users(:two))
+    assert seat.reservado?
+    assert_equal users(:two), seat.user
+    assert seat.reserved_until > Time.current
+  end
+
+  test "reserve! respeita o ttl informado" do
+    seat = seats(:livre)
+
+    freeze_time do
+      seat.reserve!(users(:two), ttl: 5.minutes)
+
+      assert_equal 5.minutes.from_now.to_i, seat.reserved_until.to_i
+    end
+  end
+
+  test "reserve! recusa assento com reserva válida e preserva o dono" do
+    seat = seats(:reservado)
+
+    assert_not seat.reserve!(users(:two))
+    assert_equal users(:one), seat.reload.user
+    assert_not_empty seat.errors[:base]
+  end
+
+  test "reserve! assume assento com reserva vencida" do
+    seat = seats(:expirado)
+
+    assert seat.reserve!(users(:one))
+    assert_equal users(:one), seat.reload.user
+    assert seat.reserved_until > Time.current
+  end
+
+  test "reserve! recusa assento vendido" do
+    seat = seats(:vendido)
+
+    assert_not seat.reserve!(users(:one))
+    assert seat.reload.vendido?
+  end
+
+  test "release! libera assento reservado" do
+    seat = seats(:reservado)
+
+    assert seat.release!
+    assert seat.reload.livre?
+    assert_nil seat.user
+    assert_nil seat.reserved_until
+  end
+
+  test "release! é idempotente em assento livre" do
+    seat = seats(:livre)
+
+    assert seat.release!
+    assert seat.reload.livre?
+  end
+
+  test "release! recusa assento vendido" do
+    seat = seats(:vendido)
+
+    assert_not seat.release!
+    assert seat.reload.vendido?
+    assert_not_empty seat.errors[:base]
+  end
 end
