@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_20_184500) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_20_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -53,7 +53,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_20_184500) do
     t.integer "status", default: 0
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index ["event_id", "sector", "row", "number"], name: "index_seats_on_event_id_and_sector_and_row_and_number", unique: true
+    t.index ["event_id", "status"], name: "index_seats_on_event_id_and_status"
     t.index ["event_id"], name: "index_seats_on_event_id"
+    t.index ["reserved_until"], name: "index_seats_on_expiring_reservations", where: "(status = 1)"
     t.index ["user_id"], name: "index_seats_on_user_id"
   end
 

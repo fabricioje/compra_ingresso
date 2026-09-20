@@ -137,8 +137,12 @@ encontrado, 409 conflito de estado, 422 validação.
 ## Job de expiração
 
 `ReleaseExpiredSeatsJob` percorre `Seat.expiradas` em lotes e chama
-`release!` em cada um (a trava por linha evita corrida com uma reserva
-simultânea). Registrado em `config/recurring.yml`, que hoje só tem bloco
+`release_if_expired!` em cada um. O `SELECT` que monta o lote roda fora de
+qualquer trava, então a trava por linha (`with_lock`) sozinha só serializa o
+acesso — não revalida nada. `release_if_expired!` reconfere dentro do
+`with_lock` que a reserva continua vencida antes de liberar; se uma reserva
+nova tiver sido feita entre a leitura do lote e a liberação, ela é
+preservada. Registrado em `config/recurring.yml`, que hoje só tem bloco
 `production` — em desenvolvimento e teste a limpeza é manual, e a
 expiração preguiçosa cobre o comportamento.
 

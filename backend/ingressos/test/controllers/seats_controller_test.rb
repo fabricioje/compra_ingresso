@@ -5,7 +5,8 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     get event_seats_url(events(:one))
 
     assert_response :success
-    assert_equal events(:one).seats.count, JSON.parse(response.body).size
+    ids = JSON.parse(response.body).map { |seat| seat["id"] }
+    assert_equal events(:one).seats.pluck(:id).sort, ids.sort
   end
 
   test "index expõe o campo disponivel" do
@@ -27,6 +28,13 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     get event_seats_url(events(:one)), params: { sector: "B" }
 
     assert_equal [ seats(:expirado).id ], JSON.parse(response.body).map { |seat| seat["id"] }
+  end
+
+  test "index com setor não escalar não estoura e não retorna assentos" do
+    get event_seats_url(events(:one)), params: { sector: { a: "1" } }
+
+    assert_response :success
+    assert_equal [], JSON.parse(response.body)
   end
 
   test "index recusa status desconhecido" do
@@ -62,9 +70,10 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
   end
 
-  test "create ignora status e user_id enviados pelo cliente" do
+  test "create ignora status, user_id e reserved_until enviados pelo cliente" do
     post event_seats_url(events(:one)),
-         params: { seat: { sector: "C", row: "3", number: "11", status: "vendido", user_id: users(:one).id } },
+         params: { seat: { sector: "C", row: "3", number: "11", status: "vendido", user_id: users(:one).id,
+                            reserved_until: 1.hour.from_now } },
          as: :json
 
     assert_response :created
@@ -72,6 +81,7 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal "livre", corpo["status"]
     assert_nil corpo["user_id"]
+    assert_nil corpo["reserved_until"]
   end
 
   test "show devolve o assento" do
@@ -88,6 +98,14 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "123.45", JSON.parse(response.body)["price"]
   end
 
+  test "update recusa assento vendido" do
+    patch seat_url(seats(:vendido)), params: { seat: { price: 1.0 } }, as: :json
+
+    assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"]["base"], "Assento vendido não pode ser alterado"
+    assert_not_equal 1.0, seats(:vendido).reload.price.to_f
+  end
+
   test "destroy remove assento livre" do
     assert_difference "Seat.count", -1 do
       delete seat_url(seats(:livre))
@@ -102,6 +120,7 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_response :unprocessable_entity
+    assert_includes JSON.parse(response.body)["errors"]["base"], "Assento vendido não pode ser removido"
   end
 
   test "destroy recusa assento com item de pedido" do
@@ -144,6 +163,14 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     post reserve_seat_url(seats(:livre)), params: {}, as: :json
 
     assert_response :bad_request
+  end
+
+  test "reserve com user_id não escalar responde 400" do
+    post reserve_seat_url(seats(:livre)),
+         params: { user_id: [ users(:one).id, users(:two).id ] }, as: :json
+
+    assert_response :bad_request
+    assert seats(:livre).reload.livre?
   end
 
   test "reserve com usuário inexistente responde 404" do

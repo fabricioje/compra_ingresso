@@ -15,7 +15,7 @@ class SeatsController < ApplicationController
       seats = seats.where(status: params[:status])
     end
 
-    seats = seats.where(sector: params[:sector]) if params[:sector].present?
+    seats = seats.where(sector: params[:sector].to_s) if params[:sector].present?
 
     render json: seats.map { |seat| seat_json(seat) }
   end
@@ -38,6 +38,11 @@ class SeatsController < ApplicationController
 
   # PATCH/PUT /seats/:id
   def update
+    if @seat.vendido?
+      @seat.errors.add(:base, "Assento vendido não pode ser alterado")
+      return render json: { errors: @seat.errors }, status: :unprocessable_entity
+    end
+
     if @seat.update(seat_params)
       render json: seat_json(@seat)
     else
@@ -48,8 +53,8 @@ class SeatsController < ApplicationController
   # DELETE /seats/:id
   def destroy
     if @seat.vendido?
-      return render json: { errors: { base: [ "Assento vendido não pode ser removido" ] } },
-                    status: :unprocessable_entity
+      @seat.errors.add(:base, "Assento vendido não pode ser removido")
+      return render json: { errors: @seat.errors }, status: :unprocessable_entity
     end
 
     if @seat.destroy
@@ -61,7 +66,13 @@ class SeatsController < ApplicationController
 
   # POST /seats/:id/reserve
   def reserve
-    user = User.find(params.require(:user_id))
+    user_id = params.require(:user_id)
+
+    unless user_id.is_a?(String) || user_id.is_a?(Integer)
+      return render json: { error: "user_id inválido" }, status: :bad_request
+    end
+
+    user = User.find(user_id)
 
     if @seat.reserve!(user)
       render json: seat_json(@seat)

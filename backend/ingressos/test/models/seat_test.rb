@@ -138,4 +138,36 @@ class SeatTest < ActiveSupport::TestCase
     assert seat.reload.vendido?
     assert_not_empty seat.errors[:base]
   end
+
+  test "release_if_expired! libera reserva ainda vencida" do
+    seat = seats(:expirado)
+
+    assert seat.release_if_expired!
+    assert seat.reload.livre?
+    assert_nil seat.user
+    assert_nil seat.reserved_until
+  end
+
+  test "release_if_expired! não derruba reserva feita depois da leitura do lote" do
+    # Reproduz a corrida do job: Seat.expiradas.find_each lê o registro FORA
+    # de qualquer trava. Aqui materializamos esse mesmo lote, depois fazemos
+    # uma reserva nova de verdade e só então chamamos release_if_expired! nos
+    # objetos já carregados — exatamente a ordem em que a corrida acontecia.
+    lote = Seat.expiradas.to_a
+
+    seats(:expirado).reserve!(users(:one))
+
+    lote.each(&:release_if_expired!)
+
+    assert seats(:expirado).reload.reservado?
+    assert_equal users(:one), seats(:expirado).user
+  end
+
+  test "release_if_expired! não mexe em reserva dentro do prazo" do
+    seat = seats(:reservado)
+
+    assert seat.release_if_expired!
+    assert seat.reload.reservado?
+    assert_equal users(:one), seat.user
+  end
 end
