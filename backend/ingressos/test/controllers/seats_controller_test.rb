@@ -33,6 +33,7 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
     get event_seats_url(events(:one)), params: { status: "banana" }
 
     assert_response :unprocessable_entity
+    assert_equal "status inválido: banana", JSON.parse(response.body)["error"]
   end
 
   test "index de evento inexistente responde 404" do
