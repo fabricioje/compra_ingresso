@@ -113,4 +113,61 @@ class SeatsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
   end
+
+  test "reserve reserva assento livre" do
+    post reserve_seat_url(seats(:livre)), params: { user_id: users(:two).id }, as: :json
+
+    assert_response :success
+    corpo = JSON.parse(response.body)
+
+    assert_equal "reservado", corpo["status"]
+    assert_equal users(:two).id, corpo["user_id"]
+    assert_not corpo["disponivel"]
+    assert seats(:livre).reload.reservado?
+  end
+
+  test "reserve de assento já reservado responde 409" do
+    post reserve_seat_url(seats(:reservado)), params: { user_id: users(:two).id }, as: :json
+
+    assert_response :conflict
+    assert_equal users(:one).id, seats(:reservado).reload.user_id
+  end
+
+  test "reserve de assento com reserva vencida funciona" do
+    post reserve_seat_url(seats(:expirado)), params: { user_id: users(:one).id }, as: :json
+
+    assert_response :success
+    assert_equal users(:one).id, seats(:expirado).reload.user_id
+  end
+
+  test "reserve sem user_id responde 400" do
+    post reserve_seat_url(seats(:livre)), params: {}, as: :json
+
+    assert_response :bad_request
+  end
+
+  test "reserve com usuário inexistente responde 404" do
+    post reserve_seat_url(seats(:livre)), params: { user_id: 999_999 }, as: :json
+
+    assert_response :not_found
+    assert seats(:livre).reload.livre?
+  end
+
+  test "release libera assento reservado" do
+    post release_seat_url(seats(:reservado))
+
+    assert_response :success
+    corpo = JSON.parse(response.body)
+
+    assert_equal "livre", corpo["status"]
+    assert_nil corpo["user_id"]
+    assert_nil corpo["reserved_until"]
+  end
+
+  test "release de assento vendido responde 409" do
+    post release_seat_url(seats(:vendido))
+
+    assert_response :conflict
+    assert seats(:vendido).reload.vendido?
+  end
 end

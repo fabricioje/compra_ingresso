@@ -1,6 +1,6 @@
 class SeatsController < ApplicationController
   before_action :set_event, only: %i[index create]
-  before_action :set_seat, only: %i[show update destroy]
+  before_action :set_seat, only: %i[show update destroy reserve release]
 
   # GET /events/:event_id/seats
   def index
@@ -56,6 +56,26 @@ class SeatsController < ApplicationController
       head :no_content
     else
       render json: { errors: @seat.errors }, status: :unprocessable_entity
+    end
+  end
+
+  # POST /seats/:id/reserve
+  def reserve
+    user = User.find(params.require(:user_id))
+
+    if @seat.reserve!(user)
+      render json: seat_json(@seat)
+    else
+      render json: { errors: @seat.errors }, status: :conflict
+    end
+  end
+
+  # POST /seats/:id/release
+  def release
+    if @seat.release!
+      render json: seat_json(@seat)
+    else
+      render json: { errors: @seat.errors }, status: :conflict
     end
   end
 
